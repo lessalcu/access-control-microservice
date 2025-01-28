@@ -12,7 +12,8 @@ const AccessController = {
       }
 
       // Validate the vehicle using the vehicle service
-      const vehicleResponse = await axios.get(`http://vehicle-service/vehicle/${vehicleId}`);
+      //const vehicleResponse = await axios.get(`http://vehicle-service/vehicle/${vehicleId}`);
+      const vehicleResponse = await axios.get(`http://localhost:3003/vehicle/${vehicleId}`);
       if (!vehicleResponse.data) {
         return res.status(404).json({ message: 'Vehicle not found' });
       }
