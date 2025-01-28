@@ -11,14 +11,14 @@ const AccessController = {
         return res.status(400).json({ message: 'Invalid access type' });
       }
 
-      // Validate the vehicle and parking lot using APIs
-      const vehicleResponse = await axios.get(`http://vehicle-service/api/vehicles/${vehicleId}`);
-      const parkingLotResponse = await axios.get(`http://parking-service/api/parkingLots/${parkingLotId}`);
-
+      // Validate the vehicle using the vehicle service
+      const vehicleResponse = await axios.get(`http://vehicle-service/vehicle/${vehicleId}`);
       if (!vehicleResponse.data) {
         return res.status(404).json({ message: 'Vehicle not found' });
       }
 
+      // Validate the parking lot using the parking service
+      const parkingLotResponse = await axios.get(`http://parking-service/api/parkingLots/${parkingLotId}`);
       if (!parkingLotResponse.data) {
         return res.status(404).json({ message: 'Parking lot not found' });
       }
@@ -42,7 +42,7 @@ const AccessController = {
       // Register the Entry/Exit
       await Record.registerEntryExit(vehicleId, parkingLotId, type);
 
-      // Adjust the parking lot capacity (simulate capacity update by calling parking service)
+      // Adjust the parking lot capacity
       const capacityUpdate = type === 'Entry' ? -1 : 1;
       await axios.patch(`http://parking-service/api/parkingLots/${parkingLotId}/updateCapacity`, {
         adjustment: capacityUpdate,
