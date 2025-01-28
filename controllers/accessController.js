@@ -1,4 +1,4 @@
-const axios = require('axios'); // Usaremos Axios para consumir APIs
+const axios = require('axios'); // Axios para hacer peticiones a las APIs de otros microservicios
 const Record = require('../models/recordModel');
 
 const AccessController = {
@@ -6,32 +6,31 @@ const AccessController = {
     try {
       const { vehicleId, parkingLotId, type } = req.body;
 
-      // Validate the access type
+      // Validar tipo de acceso
       if (!['Entry', 'Exit'].includes(type)) {
         return res.status(400).json({ message: 'Invalid access type' });
       }
 
-      // Validate the vehicle using the vehicle service
-      //const vehicleResponse = await axios.get(`http://vehicle-service/vehicle/${vehicleId}`);
+      // Validar vehículo y parqueadero usando las APIs locales
       const vehicleResponse = await axios.get(`http://localhost:3003/vehicle/${vehicleId}`);
+      //const parkingLotResponse = await axios.get(`http://localhost:3003/vehicle/${vehicleId}`);
+
       if (!vehicleResponse.data) {
         return res.status(404).json({ message: 'Vehicle not found' });
       }
 
-      // Validate the parking lot using the parking service
-      const parkingLotResponse = await axios.get(`http://parking-service/api/parkingLots/${parkingLotId}`);
-      if (!parkingLotResponse.data) {
-        return res.status(404).json({ message: 'Parking lot not found' });
-      }
+      //if (!parkingLotResponse.data) {
+       // return res.status(404).json({ message: 'Parking lot not found' });
+      // }
 
-      const parkingLot = parkingLotResponse.data;
+      //const parkingLot = parkingLotResponse.data;
 
-      // If the type is Entry, check parking lot capacity
-      if (type === 'Entry' && parkingLot.capacity <= 0) {
-        return res.status(400).json({ message: 'The parking lot is full' });
-      }
+      // Si el tipo es Entry, verificar la capacidad del parqueadero
+      //if (type === 'Entry' && parkingLot.capacity <= 0) {
+        //return res.status(400).json({ message: 'The parking lot is full' });
+      //}
 
-      // Validate vehicle's last record
+      // Verificar el último registro del vehículo
       const lastRecord = await Record.getLastRegistration(vehicleId);
       if (type === 'Entry' && lastRecord?.type === 'Entry') {
         return res.status(400).json({ message: 'The vehicle is already in the parking lot' });
@@ -40,14 +39,14 @@ const AccessController = {
         return res.status(400).json({ message: 'The vehicle is not in the parking lot' });
       }
 
-      // Register the Entry/Exit
+      // Registrar el acceso (Entrada/Salida)
       await Record.registerEntryExit(vehicleId, parkingLotId, type);
 
-      // Adjust the parking lot capacity
-      const capacityUpdate = type === 'Entry' ? -1 : 1;
-      await axios.patch(`http://parking-service/api/parkingLots/${parkingLotId}/updateCapacity`, {
-        adjustment: capacityUpdate,
-      });
+      // Ajustar la capacidad del parqueadero (simulación de actualización)
+      //const capacityUpdate = type === 'Entry' ? -1 : 1;
+      //await axios.patch(`http://localhost:3002/parkingLot/${parkingLotId}/updateCapacity`, {
+//        adjustment: capacityUpdate,
+  //    });
 
       res.status(200).json({ message: `Registration of ${type} successful` });
     } catch (error) {
