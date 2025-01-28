@@ -1,4 +1,4 @@
-/*const ParkingLot = require('../models/parkingLotModel');
+const axios = require('axios'); // Usaremos Axios para consumir APIs
 const Record = require('../models/recordModel');
 
 const AccessController = {
@@ -6,21 +6,32 @@ const AccessController = {
     try {
       const { vehicleId, parkingLotId, type } = req.body;
 
-      // Validate access type (Entry or Exit)
+      // Validate the access type
       if (!['Entry', 'Exit'].includes(type)) {
         return res.status(400).json({ message: 'Invalid access type' });
       }
 
-      // Check capacity for Entry
-      if (type === 'Entry') {
-        const capacity = await ParkingLot.getCapacity(parkingLotId);
-        if (capacity <= 0) {
-          return res.status(400).json({ message: 'The parking lot is full' });
-        }
+      // Validate the vehicle and parking lot using APIs
+      const vehicleResponse = await axios.get(`http://vehicle-service/api/vehicles/${vehicleId}`);
+      const parkingLotResponse = await axios.get(`http://parking-service/api/parkingLots/${parkingLotId}`);
+
+      if (!vehicleResponse.data) {
+        return res.status(404).json({ message: 'Vehicle not found' });
       }
 
-      // Check conflicts with existing records
-      const lastRecord = await Record.getLastRecord(vehicleId);
+      if (!parkingLotResponse.data) {
+        return res.status(404).json({ message: 'Parking lot not found' });
+      }
+
+      const parkingLot = parkingLotResponse.data;
+
+      // If the type is Entry, check parking lot capacity
+      if (type === 'Entry' && parkingLot.capacity <= 0) {
+        return res.status(400).json({ message: 'The parking lot is full' });
+      }
+
+      // Validate vehicle's last record
+      const lastRecord = await Record.getLastRegistration(vehicleId);
       if (type === 'Entry' && lastRecord?.type === 'Entry') {
         return res.status(400).json({ message: 'The vehicle is already in the parking lot' });
       }
@@ -28,76 +39,21 @@ const AccessController = {
         return res.status(400).json({ message: 'The vehicle is not in the parking lot' });
       }
 
-      // Register the access
+      // Register the Entry/Exit
       await Record.registerEntryExit(vehicleId, parkingLotId, type);
 
-      // Update parking capacity
-      const increment = type === 'Entry' ? -1 : 1;
-      await ParkingLot.updateCapacity(parkingLotId, increment);
+      // Adjust the parking lot capacity (simulate capacity update by calling parking service)
+      const capacityUpdate = type === 'Entry' ? -1 : 1;
+      await axios.patch(`http://parking-service/api/parkingLots/${parkingLotId}/updateCapacity`, {
+        adjustment: capacityUpdate,
+      });
 
       res.status(200).json({ message: `Registration of ${type} successful` });
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      console.error(error);
+      res.status(500).json({ message: 'An error occurred', error: error.message });
     }
   },
-};
-
-module.exports = AccessController;*/
-const Parking = require('../models/parkingLotModel');
-const Registration = require('../models/recordModel');
-const Vehicle = require('../models/vehicleModel'); // Nuevo: para validar vehículos
-
-const AccessController = {
-    registerAccess: async (req, res) => {
-        try {
-            const { vehicleId, parkingLotId, type } = req.body;
-
-            // Validate access type (Entry or Exit)
-            if (!['Entry', 'Exit'].includes(type)) {
-                return res.status(400).json({ message: 'Invalid access type' });
-            }
-
-            // Validate vehicle existence
-            const vehicleExists = await Vehicle.exists(vehicleId);
-            if (!vehicleExists) {
-                return res.status(404).json({ message: 'Vehicle does not exist' });
-            }
-
-            // Validate parking lot existence
-            const parkingExists = await Parking.exists(parkingLotId);
-            if (!parkingExists) {
-                return res.status(404).json({ message: 'Parking lot does not exist' });
-            }
-
-            // Validate capacity if it is Entry
-            if (type === 'Entry') {
-                const capacity = await Parking.getCapacity(parkingLotId);
-                if (capacity <= 0) {
-                    return res.status(400).json({ message: 'The parking lot is full' });
-                }
-            }
-
-            // Validate that there is no conflict in records
-            const lastRegistration = await Registration.getLastRecord(vehicleId);
-            if (type === 'Entry' && lastRegistration?.type === 'Entry') {
-                return res.status(400).json({ message: 'The vehicle is already in the parking lot' });
-            }
-            if (type === 'Exit' && (!lastRegistration || lastRegistration.type === 'Exit')) {
-                return res.status(400).json({ message: 'The vehicle is not in the parking lot' });
-            }
-
-            // Register access
-            await Registration.registerEntryExit(vehicleId, parkingLotId, type);
-
-            // Update parking capacity
-            const increment = type === 'Entry' ? -1 : 1;
-            await Parking.updateCapacity(parkingLotId, increment);
-
-            res.status(200).json({ message: `Registration of ${type} successful` });
-        } catch (error) {
-            res.status(500).json({ message: error.message });
-        }
-    },
 };
 
 module.exports = AccessController;
