@@ -13,22 +13,22 @@ const AccessController = {
 
       // Validar vehículo y parqueadero usando las APIs locales
       const vehicleResponse = await axios.get(`http://localhost:3003/vehicle/${vehicleId}`);
-      //const parkingLotResponse = await axios.get(`http://localhost:3003/vehicle/${vehicleId}`);
+      const parkingLotResponse = await axios.get(`http://localhost:8000/api/parkinglot/${parkingLotId}`);
 
       if (!vehicleResponse.data) {
         return res.status(404).json({ message: 'Vehicle not found' });
       }
 
-      //if (!parkingLotResponse.data) {
-       // return res.status(404).json({ message: 'Parking lot not found' });
-      // }
+      if (!parkingLotResponse.data) {
+       return res.status(404).json({ message: 'Parking lot not found' });
+      }
 
-      //const parkingLot = parkingLotResponse.data;
+      const parkingLot = parkingLotResponse.data;
 
       // Si el tipo es Entry, verificar la capacidad del parqueadero
-      //if (type === 'Entry' && parkingLot.capacity <= 0) {
-        //return res.status(400).json({ message: 'The parking lot is full' });
-      //}
+      if (type === 'Entry' && parkingLot.capacity <= 0) {
+        return res.status(400).json({ message: 'The parking lot is full' });
+      }
 
       // Verificar el último registro del vehículo
       const lastRecord = await Record.getLastRegistration(vehicleId);
@@ -43,10 +43,10 @@ const AccessController = {
       await Record.registerEntryExit(vehicleId, parkingLotId, type);
 
       // Ajustar la capacidad del parqueadero (simulación de actualización)
-      //const capacityUpdate = type === 'Entry' ? -1 : 1;
-      //await axios.patch(`http://localhost:3002/parkingLot/${parkingLotId}/updateCapacity`, {
-//        adjustment: capacityUpdate,
-  //    });
+      const capacityUpdate = type === 'Entry' ? -1 : 1;
+      await axios.patch(`http://localhost:3002/parkingLot/${parkingLotId}/updateCapacity`, {
+        adjustment: capacityUpdate,
+      });
 
       res.status(200).json({ message: `Registration of ${type} successful` });
     } catch (error) {
